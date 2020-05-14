@@ -12,6 +12,7 @@ import { activate as activateASL } from './asl/client'
 import { createStateMachineFromTemplate } from './commands/createStateMachineFromTemplate'
 import { publishStateMachine } from './commands/publishStateMachine'
 import { AslVisualizationManager } from './commands/visualizeStateMachine/aslVisualizationManager'
+import extractFromCFTemplate from './utils/extractFromCfTemplate'
 
 import * as nls from 'vscode-nls'
 const localize = nls.loadMessageBundle()
@@ -27,6 +28,7 @@ export async function activate(
     await activateASL(extensionContext)
     await registerStepFunctionCommands(extensionContext, awsContext, outputChannel)
     initializeCodeLens(extensionContext)
+    initializeCodeLensForStateMachines(extensionContext)
 }
 
 async function registerStepFunctionCommands(
@@ -123,6 +125,38 @@ function initializeCodeLens(context: vscode.ExtensionContext) {
     const docSelector = {
         language: 'asl',
     }
+
+    const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
+        docSelector,
+        new StepFunctionsCodeLensProvider()
+    )
+
+    context.subscriptions.push(codeLensProviderDisposable)
+}
+
+function initializeCodeLensForStateMachines(context: vscode.ExtensionContext) {
+    class StepFunctionsCodeLensProvider implements vscode.CodeLensProvider {
+        public async provideCodeLenses(document: vscode.TextDocument): Promise<vscode.CodeLens[]> {
+            return extractFromCFTemplate(document).map(item => {
+                const renderCommand: vscode.Command = {
+                    command: 'aws.previewStateMachine',
+                    title: localize('AWS.stepFunctions.render', 'Render graph'),
+                    arguments: [item.definition, item.name],
+                }
+
+                return new vscode.CodeLens(item.range, renderCommand)
+            })
+        }
+    }
+
+    const docSelector: vscode.DocumentSelector = [
+        { language: 'yaml' },
+        { language: 'json' },
+        { language: 'samyaml' },
+        { language: 'samjson' },
+        { language: 'cfyaml' },
+        { language: 'cfjson' },
+    ]
 
     const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
         docSelector,
