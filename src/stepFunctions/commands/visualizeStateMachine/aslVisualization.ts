@@ -11,6 +11,8 @@ import * as vscode from 'vscode'
 import { ext } from '../../../shared/extensionGlobals'
 import { getLogger, Logger } from '../../../shared/logger'
 import { isDocumentValid } from '../../utils'
+import { DefinitionData } from './aslVisualizationManager'
+import extractFromCfTemplate from '../../utils/extractFromCfTemplate'
 
 export interface MessageObject {
     command: string
@@ -22,12 +24,14 @@ export interface MessageObject {
 export class AslVisualization {
     public readonly documentUri: vscode.Uri
     public readonly webviewPanel: vscode.WebviewPanel
+    public readonly stateMachineName?: string
     protected readonly disposables: vscode.Disposable[] = []
     protected isPanelDisposed = false
     private readonly onVisualizationDisposeEmitter = new vscode.EventEmitter<void>()
 
-    public constructor(textDocument: vscode.TextDocument) {
+    public constructor(textDocument: vscode.TextDocument, definitionData?: DefinitionData) {
         this.documentUri = textDocument.uri
+        this.stateMachineName = definitionData?.stateMachineName
         this.webviewPanel = this.setupWebviewPanel(textDocument)
     }
 
@@ -56,7 +60,7 @@ export class AslVisualization {
         const logger: Logger = getLogger()
 
         // Create and show panel
-        const panel = this.createVisualizationWebviewPanel(documentUri)
+        const panel = this.createVisualizationWebviewPanel(documentUri, this.stateMachineName)
 
         // Set the initial html for the webpage
         panel.webview.html = this.getWebviewContent(
@@ -99,17 +103,27 @@ export class AslVisualization {
         )
 
         const sendUpdateMessage = async (updatedTextDocument: vscode.TextDocument) => {
-            const isValid = await isDocumentValid(updatedTextDocument)
+            const isValid = updatedTextDocument.languageId === 'cfjson' || (await isDocumentValid(updatedTextDocument))
+            let text = ''
             const webview = this.getWebview()
             if (this.isPanelDisposed || !webview) {
                 return
+            }
+
+            if (updatedTextDocument.languageId === 'cfjson') {
+                const definitionData = extractFromCfTemplate(updatedTextDocument).find(
+                    item => item.name === this.stateMachineName
+                )
+                text = definitionData?.definition ?? ''
+            } else {
+                text = updatedTextDocument.getText()
             }
 
             logger.debug('Sending update message to webview.')
 
             webview.postMessage({
                 command: 'update',
-                stateMachineData: updatedTextDocument.getText(),
+                stateMachineData: text,
                 isValid,
             })
         }
@@ -166,10 +180,10 @@ export class AslVisualization {
         return panel
     }
 
-    private createVisualizationWebviewPanel(documentUri: vscode.Uri): vscode.WebviewPanel {
+    private createVisualizationWebviewPanel(documentUri: vscode.Uri, stateMachineName?: string): vscode.WebviewPanel {
         return vscode.window.createWebviewPanel(
             'stateMachineVisualization',
-            this.makeWebviewTitle(documentUri),
+            this.makeWebviewTitle(documentUri, stateMachineName),
             {
                 preserveFocus: true,
                 viewColumn: vscode.ViewColumn.Beside,
@@ -186,8 +200,13 @@ export class AslVisualization {
         )
     }
 
-    private makeWebviewTitle(sourceDocumentUri: vscode.Uri): string {
-        return localize('AWS.stepFunctions.graph.titlePrefix', 'Graph: {0}', path.basename(sourceDocumentUri.fsPath))
+    private makeWebviewTitle(sourceDocumentUri: vscode.Uri, stateMachineName?: string): string {
+        return localize(
+            'AWS.stepFunctions.graph.titlePrefix',
+            'Graph: {0} {1}',
+            path.basename(sourceDocumentUri.fsPath),
+            stateMachineName ?? ''
+        )
     }
 
     private getWebviewContent(

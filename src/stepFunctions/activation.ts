@@ -40,13 +40,20 @@ async function registerStepFunctionCommands(
     const visualizationManager = new AslVisualizationManager(extensionContext)
 
     extensionContext.subscriptions.push(
-        vscode.commands.registerCommand('aws.previewStateMachine', async () => {
-            try {
-                return await visualizationManager.visualizeStateMachine(extensionContext.globalState)
-            } finally {
-                telemetry.recordStepfunctionsPreviewstatemachine()
+        vscode.commands.registerCommand(
+            'aws.previewStateMachine',
+            async (definition?: string, stateMachineName?: string) => {
+                try {
+                    const definitionData = definition && stateMachineName ? { definition, stateMachineName } : undefined
+                    return await visualizationManager.visualizeStateMachine(
+                        extensionContext.globalState,
+                        definitionData
+                    )
+                } finally {
+                    telemetry.recordStepfunctionsPreviewstatemachine()
+                }
             }
-        })
+        )
     )
 
     extensionContext.subscriptions.push(
@@ -149,14 +156,7 @@ function initializeCodeLensForStateMachines(context: vscode.ExtensionContext) {
         }
     }
 
-    const docSelector: vscode.DocumentSelector = [
-        { language: 'yaml' },
-        { language: 'json' },
-        { language: 'samyaml' },
-        { language: 'samjson' },
-        { language: 'cfyaml' },
-        { language: 'cfjson' },
-    ]
+    const docSelector: vscode.DocumentSelector = [{ language: 'cfjson' }]
 
     const codeLensProviderDisposable = vscode.languages.registerCodeLensProvider(
         docSelector,

@@ -10,6 +10,11 @@ import { getLogger, Logger } from '../../../shared/logger'
 import { StateMachineGraphCache } from '../../utils'
 import { AslVisualization } from './aslVisualization'
 
+export interface DefinitionData {
+    definition: string
+    stateMachineName: string
+}
+
 export class AslVisualizationManager {
     protected readonly managedVisualizations: Map<string, AslVisualization> = new Map<string, AslVisualization>()
     private readonly extensionContext: vscode.ExtensionContext
@@ -22,7 +27,10 @@ export class AslVisualizationManager {
         return this.managedVisualizations
     }
 
-    public async visualizeStateMachine(globalStorage: vscode.Memento): Promise<vscode.WebviewPanel | undefined> {
+    public async visualizeStateMachine(
+        globalStorage: vscode.Memento,
+        definitionData?: DefinitionData
+    ): Promise<vscode.WebviewPanel | undefined> {
         const logger: Logger = getLogger()
         const cache = new StateMachineGraphCache()
 
@@ -41,7 +49,7 @@ export class AslVisualizationManager {
         const textDocument: vscode.TextDocument = activeTextEditor.document
 
         // Attempt to retrieve existing visualization if it exists.
-        const existingVisualization = this.getExistingVisualization(textDocument.uri)
+        const existingVisualization = this.getExistingVisualization(textDocument.uri, definitionData?.stateMachineName)
         if (existingVisualization) {
             existingVisualization.showPanel()
 
@@ -52,8 +60,8 @@ export class AslVisualizationManager {
         try {
             await cache.updateCache(globalStorage)
 
-            const newVisualization = new AslVisualization(textDocument)
-            this.handleNewVisualization(newVisualization)
+            const newVisualization = new AslVisualization(textDocument, definitionData)
+            this.handleNewVisualization(newVisualization, definitionData?.stateMachineName)
 
             return newVisualization.getPanel()
         } catch (err) {
@@ -71,20 +79,20 @@ export class AslVisualizationManager {
         return
     }
 
-    private deleteVisualization(visualizationToDelete: AslVisualization): void {
-        this.managedVisualizations.delete(visualizationToDelete.documentUri.path)
+    private deleteVisualization(visualizationToDelete: AslVisualization, stateMachineName?: string): void {
+        this.managedVisualizations.delete(visualizationToDelete.documentUri.path + (stateMachineName ?? ''))
     }
 
-    private handleNewVisualization(newVisualization: AslVisualization): void {
-        this.managedVisualizations.set(newVisualization.documentUri.path, newVisualization)
+    private handleNewVisualization(newVisualization: AslVisualization, stateMachineName?: string): void {
+        this.managedVisualizations.set(newVisualization.documentUri.path + (stateMachineName ?? ''), newVisualization)
 
         const visualizationDisposable = newVisualization.onVisualizationDisposeEvent(() => {
-            this.deleteVisualization(newVisualization)
+            this.deleteVisualization(newVisualization, stateMachineName)
         })
         this.extensionContext.subscriptions.push(visualizationDisposable)
     }
 
-    private getExistingVisualization(uriToFind: vscode.Uri): AslVisualization | undefined {
-        return this.managedVisualizations.get(uriToFind.path)
+    private getExistingVisualization(uriToFind: vscode.Uri, stateMachineName?: string): AslVisualization | undefined {
+        return this.managedVisualizations.get(uriToFind.path + (stateMachineName ?? ''))
     }
 }

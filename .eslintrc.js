@@ -21,6 +21,8 @@ module.exports = {
         // TODO reenable this rule (by removing this off)
         '@typescript-eslint/unbound-method': 'off',
         // TODO reenable this rule (by removing this off)
+        '@typescript-eslint/interface-name-prefix': 'off',
+        // TODO reenable this rule (by removing this off)
         'no-async-promise-executor': 'off',
         // TODO reenable this rule (by removing this off)
         '@typescript-eslint/no-misused-promises': 'off',

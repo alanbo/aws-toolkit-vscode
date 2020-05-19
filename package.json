@@ -54,7 +54,9 @@
         "onView:aws.cdk.explorer",
         "onCommand:aws.refreshCdkExplorer",
         "onCommand:aws.aboutToolkit",
-        "onLanguage:asl"
+        "onLanguage:asl",
+        "onLanguage:cfjson",
+        "onLanguage:cfyaml"
     ],
     "main": "./extensionMain",
     "contributes": {
@@ -802,6 +804,15 @@
                 "aliases": [
                     "Amazon States Language"
                 ]
+            },
+            {
+                "id": "cfjson",
+                "extensions": [
+                    ".cf.json"
+                ],
+                "aliases": [
+                    "Cloud Formation JSON"
+                ]
             }
         ],
         "keybindings": [
@@ -815,6 +826,11 @@
         "grammars": [
             {
                 "language": "asl",
+                "scopeName": "source.asl",
+                "path": "./syntaxes/ASL.tmLanguage"
+            },
+            {
+                "language": "cfjson",
                 "scopeName": "source.asl",
                 "path": "./syntaxes/ASL.tmLanguage"
             }

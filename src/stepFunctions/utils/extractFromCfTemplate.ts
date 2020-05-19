@@ -1,3 +1,8 @@
+/*!
+ * Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import {
     ASTNode,
     ObjectASTNode,
@@ -9,6 +14,7 @@ import {
 import * as vscode from 'vscode'
 const languageService = getLanguageService({})
 
+// tslint:disable-next-line
 interface IStateMachineData {
     name: string
     definition: string
@@ -75,27 +81,29 @@ export default function extractStateMachinesFromCfTemplate(textDocument: vscode.
                 return false
             })
 
-            return stateMachineNodes.map(stateMachineNode => {
-                const { offset, colonOffset } = stateMachineNode
+            return stateMachineNodes
+                .map(stateMachineNode => {
+                    const { offset, colonOffset } = stateMachineNode
 
-                const startPos = textDocument.positionAt(offset)
-                const endPos = textDocument.positionAt(offset + colonOffset!)
+                    const startPos = textDocument.positionAt(offset)
+                    const endPos = textDocument.positionAt(offset + colonOffset!)
 
-                let definition = ''
+                    let definition = ''
 
-                if (isObjectNode(stateMachineNode.valueNode)) {
-                    const definitionNode = getPath(stateMachineNode.valueNode, ['Properties', 'Definition'])
-                    const defStart = definitionNode?.valueNode?.offset ?? 0
-                    const defEnd = defStart + (definitionNode?.valueNode?.length ?? 0)
-                    definition = text.slice(defStart, defEnd)
-                }
+                    if (isObjectNode(stateMachineNode.valueNode)) {
+                        const definitionNode = getPath(stateMachineNode.valueNode, ['Properties', 'Definition'])
+                        const defStart = definitionNode?.valueNode?.offset ?? 0
+                        const defEnd = defStart + (definitionNode?.valueNode?.length ?? 0)
+                        definition = text.slice(defStart, defEnd)
+                    }
 
-                return {
-                    definition,
-                    name: stateMachineNode.keyNode.value,
-                    range: new vscode.Range(startPos, endPos),
-                }
-            })
+                    return {
+                        definition,
+                        name: stateMachineNode.keyNode.value,
+                        range: new vscode.Range(startPos, endPos),
+                    }
+                })
+                .filter(def => def.definition.length > 0)
         }
     }
 
